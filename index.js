@@ -22,6 +22,15 @@ const getUser = token => {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+	plugins: [
+		require("./plugins/BasicLogging"),
+
+		{
+			serverWillStart() {
+				console.log("GraphQL server starting up!")
+			}
+		}
+	],
   context: ({req}) => {
     // get the user token from the headers
     const authorization = req.headers.authorization || ""
@@ -39,6 +48,6 @@ const server = new ApolloServer({
 
 server.applyMiddleware({app})
 
-app.listen({port: process.env.PORT || 8000}, () => {
-  console.log(`Server ready at http://localhost:${process.env.PORT}${server.graphqlPath}`)
+app.listen({port: process.env.PORT || 8000}, function() {
+  console.log(`Server ready at http://localhost:${this.address().port}${server.graphqlPath}`)
 })

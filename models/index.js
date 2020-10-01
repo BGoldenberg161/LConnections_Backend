@@ -18,4 +18,5 @@ db.once("open", function () {
 })
 
 module.exports.User = require("./User")
-module.exports.Video = require("./Video")
+module.exports.Cleaning = require("./Cleaning")
+module.exports.Invoice = require("./Invoice")

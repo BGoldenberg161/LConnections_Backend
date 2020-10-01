@@ -1,16 +1,21 @@
 const mongoose = require("mongoose")
 
 const UserSchema = new mongoose.Schema({
-  username: {
+  firstName: {
     type: String,
     required: true,
-    unique: true,
-    minlength: 5,
-    maxlength: 30
+    minlength: 1
   },
-	name: {
+	lastName: {
   	type: String,
-		required: true
+		required: true,
+		minlength: 1
+	},
+	phoneNumber: {
+  	type: String,
+		required: true,
+		minlength: 10,
+		maxlength: 10
 	},
   email: {
     type: String,
@@ -24,31 +29,24 @@ const UserSchema = new mongoose.Schema({
   birthday: {
     type: Date,
   },
-  followingUsers: [{
-    type: mongoose.Schema.Types.ObjectID,
-    ref: "User"
-  }],
-  followingHashtags: [{
-    type: String,
-  }],
-  profile: {
-    bio: {
-      type: String,
-      default: "This is my Uphoria profile!"
-    },
-    instagramUrl: {
-      type: String,
-      default: "https://instagram.com/anthonygregis"
-    },
-    personalUrl: {
-      type: String,
-      default: "https://nopixel.online/"
-    }
-  },
-  videos: [{
-    type: mongoose.Schema.Types.ObjectID,
-    ref: "Video"
-  }]
+	stripeId: {
+  	type: String
+	},
+	isNotified: {
+  	type: Boolean,
+		required: true,
+		default: false
+	},
+	isEmployee: {
+  	type: Boolean,
+		required: true,
+		default: false
+	},
+	inactive: {
+  	type: Boolean,
+		required: true,
+		default: false
+	}
 }, { timestamps: true })
 
 module.exports = mongoose.model("User", UserSchema)
