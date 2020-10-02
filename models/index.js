@@ -20,3 +20,4 @@ db.once("open", function () {
 module.exports.User = require("./User")
 module.exports.Cleaning = require("./Cleaning")
 module.exports.Invoice = require("./Invoice")
+module.exports.Product = require("./Product")

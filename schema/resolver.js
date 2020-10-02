@@ -19,11 +19,53 @@ const resolver = {
 					}
 				}
 				const foundUser = await db.User.findById(args.id)
-				foundUser.cleanings = await db.Cleaning.find({customer: args.id})
+				let upcomingCleanings = await db.Cleaning.aggregate([
+					// Get only records created in the last 30 days
+					{$match:{
+							"date":{$gt: new Date()}
+						}},
+					// Get the year, month and day from the date field
+					{$project:{
+							"year":{$year:"$date"},
+							"month":{$month:"$date"},
+							"day": {$dayOfMonth:"$date"}
+						}},
+					// Group by year, month and day and get the count
+					{$group:{
+							_id:{$concat: [{$toString: "$month"}, "/", {$toString: "$day"}, "/", {$toString: "$year"}]},
+							"count":{$sum:1}
+						}}
+				])
 
-				let userInvoices = await stripe.invoices.list({
+
+				foundUser.cleanings = await db.Cleaning.find({customer: args.id})
+				foundUser.invoices = await db.Invoice.find({customer: args.id}).populate("cleaning")
+				foundUser.blockedDates = upcomingCleanings.filter(cleaning => cleaning.count >= 2)
+
+				let updatedInvoices = await stripe.invoices.list({
 					customer: foundUser.stripeId
 				})
+
+				console.log(updatedInvoices)
+
+				for(let i = 0; i < updatedInvoices.data.length; i++) {
+					let updatedInvoice = updatedInvoices.data[i]
+					let foundInvoice = await db.Invoice.findOne({stripeId: updatedInvoice.id}, function (err, invoice) {
+						if(invoice != null) {
+							// console.log("DB Invoice:", invoice)
+							invoice.status = updatedInvoice.status
+							invoice.save(function (err) {
+								if(err) {
+									// console.error('ERROR!');
+								}
+							})
+						} else {
+							// console.log(invoice)
+						}
+					})
+				}
+
+				foundUser.invoices = await db.Invoice.find({customer: args.id}).populate("cleaning")
 
 				let userCards = await stripe.customers.listSources(
 					foundUser.stripeId,
@@ -34,8 +76,6 @@ const resolver = {
 					foundUser.stripeId,
 					{object: 'bank_account'}
 				)
-
-				foundUser.invoices = userInvoices.data
 				foundUser.cards = userCards.data
 				foundUser.banks = userBanks.data
 
@@ -233,6 +273,8 @@ const resolver = {
 				if (context.user.isEmployee !== true) throw new Error("You are not authorized to create invoices")
 
 				const customer = await db.User.findById(args.customer)
+				const cleaning = await db.Cleaning.findById(args.cleaning)
+				let product = await db.Product.find({name: args.type})
 
 				let stripeCustomer = await stripe.customers.list({
 					email: customer.email,
@@ -250,20 +292,46 @@ const resolver = {
 					stripeCustomer = stripeCustomer.data[0]
 				}
 
-				const invoice = await stripe.invoices.create({
+				if(product.length < 1) {
+					product = await stripe.products.create({
+						name: cleaning.type
+					})
+
+					product = await db.Product.create({stripeId: product.id, name: product.name})
+				}
+
+				const price = await stripe.prices.create({
+					nickname: args.description,
+					unit_amount: args.amount * 100,
+					currency: 'usd',
+					product: product.stripeId
+				});
+
+				const invoiceItem = await stripe.invoiceItems.create({
 					customer: stripeCustomer.id,
-					amount_due: args.amount,
-					currency: "usd",
-					description: description,
-					receipt_email: customer.email
+					price: price.id
 				})
 
+				let invoice = await stripe.invoices.create({
+					customer: stripeCustomer.id,
+					collection_method: "send_invoice",
+					due_date: Math.floor(new Date(args.dueDate).getTime() / 1000),
+					description: description,
+				})
+
+				let finalizedInvoice = await stripe.invoices.finalizeInvoice(
+					invoice.id
+				);
+
+				console.log("Draft:", invoice)
+				console.log("Final:", finalizedInvoice)
+
+				args.number = finalizedInvoice.number
 				args.stripeId = invoice.id
+				args.invoicePdf = finalizedInvoice.hosted_invoice_url
 
 				let newInvoice = await db.Invoice.create({...args})
 				newInvoice = await newInvoice.populate("customer").populate("cleaning").execPopulate()
-
-				console.log(newInvoice)
 
 				return newInvoice
 			}
@@ -278,7 +346,8 @@ const resolver = {
 					{source: args.paymentMethod}
 				)
 
-				console.log(paidInvoice)
+				const foundInvoice = await db.Invoice.findOne({stripeId: args.invoiceId}).populate("cleaning")
+				await db.Cleaning.findByIdAndUpdate(foundInvoice.cleaning._id,{"depositPaid": true})
 
 				return paidInvoice
 			}
