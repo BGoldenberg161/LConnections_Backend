@@ -21,10 +21,16 @@ const typeDefs = gql`
 	  isNotified: Boolean!
 	  isEmployee: Boolean!
 	  inactive: Boolean!
+	  blockedDates: [blockedDate!]!
 	  cleanings: [Cleaning!]!
 	  invoices: [Invoice!]!
 	  cards: [cardPaymentMethod!]!
 	  banks: [bankPaymentMethod!]!
+  }
+  
+  type blockedDate {
+		  _id: String!
+		  count: Int!
   }
   
   type Cleaning {
@@ -39,9 +45,10 @@ const typeDefs = gql`
   
   type Invoice {
 	  id: ID!
+	  number: String!
 	  stripeId: ID!
 	  customer: User!
-	  cleaning: Cleaning!
+	  cleaning: Cleaning
 	  dueDate: Date!
 	  amount: Int!
 	  invoicePdf: String!
@@ -52,11 +59,11 @@ const typeDefs = gql`
     id: ID!
 	  object: String!
     customer: ID!
-	  address_line1: String!
+	  address_line1: String
     address_line2: String
-	  address_city: String!
-	  address_state: String!
-	  address_zip: String!
+	  address_city: String
+	  address_state: String
+	  address_zip: String
 	  brand: String!
 	  cvc_check: String!
 	  last4: String!
@@ -114,7 +121,7 @@ const typeDefs = gql`
 	  createCleaning(customer: ID!, type: String!, date: DateTime!, address: String!, squareFootage: Float!, depositPaid: Boolean): Cleaning!
 	  updateCleaning(id: ID!, type: String, date: DateTime, address: String, squareFootage: Float, depositPaid: Boolean): Cleaning!
 	  deleteCleaning(id: ID!): String!
-	  createInvoice(stripeId: ID!, customer: ID!, cleaning: ID!, description: String!, dueDate: Date!, amount: Int!, invoicePdf: String!, status: String!): Invoice!
+	  createInvoice(stripeId: ID!, customer: ID!, cleaning: ID!, description: String!, dueDate: Date!, amount: Int!, status: String!): Invoice!
 	  updateInvoice(id: ID!, dueDate: Date, amount: Int, status: String): Invoice!
 	  payInvoice(invoiceId: ID!, paymentMethod: ID!): Invoice!
 	  createCardPaymentMethod(customerId: ID!, paymentToken: String!): cardPaymentMethod!

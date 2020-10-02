@@ -5,6 +5,10 @@ const InvoiceSchema = new mongoose.Schema({
 		type: String,
 		required: true
 	},
+	number: {
+		type: String,
+		required: true
+	},
 	customer: {
 		type: mongoose.Schema.Types.ObjectID,
 		required: true,
